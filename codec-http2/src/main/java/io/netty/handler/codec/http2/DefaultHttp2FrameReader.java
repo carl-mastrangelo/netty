@@ -18,6 +18,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http2.Http2FrameReader.Configuration;
+import io.netty.util.internal.UnstableApi;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.DEFAULT_MAX_FRAME_SIZE;
 import static io.netty.handler.codec.http2.Http2CodecUtil.FRAME_HEADER_LENGTH;
@@ -49,6 +50,7 @@ import static io.netty.handler.codec.http2.Http2FrameTypes.WINDOW_UPDATE;
 /**
  * A {@link Http2FrameReader} that supports all frame types defined by the HTTP/2 specification.
  */
+@UnstableApi
 public class DefaultHttp2FrameReader implements Http2FrameReader, Http2FrameSizePolicy, Configuration {
     private enum State {
         FRAME_HEADER,
