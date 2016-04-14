@@ -132,6 +132,16 @@ public class DefaultFullHttpResponse extends DefaultHttpResponse implements Full
         return this;
     }
 
+    @Override
+    public FullHttpResponse copy(ByteBuf newContent) {
+        return copy(false, newContent);
+    }
+
+    @Override
+    public FullHttpResponse copy() {
+        return copy(true, null);
+    }
+
     /**
      * Copy this object
      *
@@ -148,28 +158,22 @@ public class DefaultFullHttpResponse extends DefaultHttpResponse implements Full
      * @return A copy of this object
      */
     private FullHttpResponse copy(boolean copyContent, ByteBuf newContent) {
-        return new DefaultFullHttpResponse(
-                protocolVersion(), status(),
-                copyContent ? content().copy() :
-                        newContent == null ? Unpooled.buffer(0) : newContent,
-                headers(),
-                trailingHeaders());
-    }
-
-    @Override
-    public FullHttpResponse copy(ByteBuf newContent) {
-        return copy(false, newContent);
-    }
-
-    @Override
-    public FullHttpResponse copy() {
-        return copy(true, null);
+        return dup(copyContent ? content().copy() :
+                newContent == null ? Unpooled.buffer(0) : newContent);
     }
 
     @Override
     public FullHttpResponse duplicate() {
-        return new DefaultFullHttpResponse(protocolVersion(), status(),
-                content().duplicate(), headers(), trailingHeaders());
+        return dup(content().duplicate());
+    }
+
+    @Override
+    public FullHttpResponse rduplicate() {
+        return dup(content().rduplicate());
+    }
+
+    private FullHttpResponse dup(ByteBuf content) {
+        return new DefaultFullHttpResponse(protocolVersion(), status(), content, headers(), trailingHeaders());
     }
 
     @Override

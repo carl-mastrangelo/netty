@@ -26,4 +26,25 @@ import io.netty.channel.ChannelPipeline;
  * place {@link RedisBulkStringAggregator} after {@link RedisDecoder} in the {@link ChannelPipeline}.
  */
 public interface BulkStringRedisContent extends RedisMessage, ByteBufHolder {
+
+    @Override
+    BulkStringRedisContent copy();
+
+    @Override
+    BulkStringRedisContent duplicate();
+
+    @Override
+    BulkStringRedisContent rduplicate();
+
+    @Override
+    BulkStringRedisContent retain();
+
+    @Override
+    BulkStringRedisContent retain(int increment);
+
+    @Override
+    BulkStringRedisContent touch();
+
+    @Override
+    BulkStringRedisContent touch(Object hint);
 }

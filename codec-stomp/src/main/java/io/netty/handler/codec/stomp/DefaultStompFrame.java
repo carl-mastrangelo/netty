@@ -45,12 +45,21 @@ public class DefaultStompFrame extends DefaultStompHeadersSubframe implements St
 
     @Override
     public StompFrame copy() {
-        return new DefaultStompFrame(command, content.copy());
+        return copy(content.copy());
     }
 
     @Override
     public StompFrame duplicate() {
-        return new DefaultStompFrame(command, content.duplicate());
+        return copy(content.duplicate());
+    }
+
+    @Override
+    public StompFrame rduplicate() {
+        return copy(content.rduplicate());
+    }
+
+    private StompFrame copy(ByteBuf content) {
+        return new DefaultStompFrame(command, content);
     }
 
     @Override

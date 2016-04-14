@@ -140,12 +140,22 @@ public class CloseWebSocketFrame extends WebSocketFrame {
 
     @Override
     public CloseWebSocketFrame copy() {
-        return new CloseWebSocketFrame(isFinalFragment(), rsv(), content().copy());
+        return (CloseWebSocketFrame) super.copy();
     }
 
     @Override
     public CloseWebSocketFrame duplicate() {
-        return new CloseWebSocketFrame(isFinalFragment(), rsv(), content().duplicate());
+        return (CloseWebSocketFrame) super.duplicate();
+    }
+
+    @Override
+    public CloseWebSocketFrame rduplicate() {
+        return (CloseWebSocketFrame) super.rduplicate();
+    }
+
+    @Override
+    protected CloseWebSocketFrame copy(ByteBuf content) {
+        return new CloseWebSocketFrame(isFinalFragment(), rsv(), content);
     }
 
     @Override

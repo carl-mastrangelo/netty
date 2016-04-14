@@ -45,16 +45,23 @@ public class DefaultLastHttpContent extends DefaultHttpContent implements LastHt
 
     @Override
     public LastHttpContent copy() {
-        DefaultLastHttpContent copy = new DefaultLastHttpContent(content().copy(), validateHeaders);
-        copy.trailingHeaders().set(trailingHeaders());
-        return copy;
+        return dup(content().copy());
     }
 
     @Override
     public LastHttpContent duplicate() {
-        DefaultLastHttpContent copy = new DefaultLastHttpContent(content().duplicate(), validateHeaders);
-        copy.trailingHeaders().set(trailingHeaders());
-        return copy;
+        return dup(content().duplicate());
+    }
+
+    @Override
+    public LastHttpContent rduplicate() {
+        return dup(content().rduplicate());
+    }
+
+    private LastHttpContent dup(ByteBuf content) {
+        final DefaultLastHttpContent dup = new DefaultLastHttpContent(content, validateHeaders);
+        dup.trailingHeaders().set(trailingHeaders());
+        return dup;
     }
 
     @Override

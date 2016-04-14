@@ -56,12 +56,22 @@ public class PingWebSocketFrame extends WebSocketFrame {
 
     @Override
     public PingWebSocketFrame copy() {
-        return new PingWebSocketFrame(isFinalFragment(), rsv(), content().copy());
+        return (PingWebSocketFrame) super.copy();
     }
 
     @Override
     public PingWebSocketFrame duplicate() {
-        return new PingWebSocketFrame(isFinalFragment(), rsv(), content().duplicate());
+        return (PingWebSocketFrame) super.duplicate();
+    }
+
+    @Override
+    public PingWebSocketFrame rduplicate() {
+        return (PingWebSocketFrame) super.rduplicate();
+    }
+
+    @Override
+    protected PingWebSocketFrame copy(ByteBuf content) {
+        return new PingWebSocketFrame(isFinalFragment(), rsv(), content);
     }
 
     @Override

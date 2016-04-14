@@ -87,7 +87,7 @@ public abstract class AbstractBinaryMemcacheDecoder<M extends BinaryMemcacheMess
                         return;
                     }
 
-                    currentMessage.setExtras(in.readSlice(extrasLength).retain());
+                    currentMessage.setExtras(in.readRSlice(extrasLength));
                 }
 
                 state = State.READ_KEY;
@@ -103,7 +103,7 @@ public abstract class AbstractBinaryMemcacheDecoder<M extends BinaryMemcacheMess
                         return;
                     }
 
-                    currentMessage.setKey(in.readSlice(keyLength).retain());
+                    currentMessage.setKey(in.readRSlice(keyLength));
                 }
                 out.add(currentMessage.retain());
                 state = State.READ_CONTENT;
@@ -131,7 +131,7 @@ public abstract class AbstractBinaryMemcacheDecoder<M extends BinaryMemcacheMess
                         toRead = remainingLength;
                     }
 
-                    ByteBuf chunkBuffer = in.readSlice(toRead).retain();
+                    ByteBuf chunkBuffer = in.readRSlice(toRead);
 
                     MemcacheContent chunk;
                     if ((alreadyReadChunkSize += toRead) >= valueLength) {

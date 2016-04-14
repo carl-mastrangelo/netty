@@ -151,6 +151,21 @@ public class MemoryAttribute extends AbstractMemoryHttpData implements Attribute
     }
 
     @Override
+    public Attribute rduplicate() {
+        MemoryAttribute attr = new MemoryAttribute(getName());
+        attr.setCharset(getCharset());
+        ByteBuf content = content();
+        if (content != null) {
+            try {
+                attr.setContent(content.rduplicate());
+            } catch (IOException e) {
+                throw new ChannelException(e);
+            }
+        }
+        return attr;
+    }
+
+    @Override
     public Attribute retain() {
         super.retain();
         return this;

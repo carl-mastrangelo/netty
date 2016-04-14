@@ -183,6 +183,12 @@ final class ReplayingDecoderByteBuf extends ByteBuf {
     }
 
     @Override
+    public ByteBuf rduplicate() {
+        reject();
+        return this;
+    }
+
+    @Override
     public boolean getBoolean(int index) {
         checkIndex(index, 1);
         return buffer.getBoolean(index);
@@ -594,6 +600,12 @@ final class ReplayingDecoderByteBuf extends ByteBuf {
     }
 
     @Override
+    public ByteBuf readRSlice(int length) {
+        checkReadableBytes(length);
+        return buffer.readRSlice(length);
+    }
+
+    @Override
     public ByteBuf readBytes(OutputStream out, int length) {
         reject();
         return this;
@@ -882,7 +894,19 @@ final class ReplayingDecoderByteBuf extends ByteBuf {
     }
 
     @Override
+    public ByteBuf rslice() {
+        reject();
+        return this;
+    }
+
+    @Override
     public ByteBuf slice(int index, int length) {
+        checkIndex(index, length);
+        return buffer.slice(index, length);
+    }
+
+    @Override
+    public ByteBuf rslice(int index, int length) {
         checkIndex(index, length);
         return buffer.slice(index, length);
     }

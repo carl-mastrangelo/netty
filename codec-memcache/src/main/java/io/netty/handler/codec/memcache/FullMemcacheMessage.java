@@ -25,6 +25,12 @@ public interface FullMemcacheMessage extends MemcacheMessage, LastMemcacheConten
     FullMemcacheMessage copy();
 
     @Override
+    FullMemcacheMessage duplicate();
+
+    @Override
+    FullMemcacheMessage rduplicate();
+
+    @Override
     FullMemcacheMessage retain(int increment);
 
     @Override
@@ -35,7 +41,4 @@ public interface FullMemcacheMessage extends MemcacheMessage, LastMemcacheConten
 
     @Override
     FullMemcacheMessage touch(Object hint);
-
-    @Override
-    FullMemcacheMessage duplicate();
 }

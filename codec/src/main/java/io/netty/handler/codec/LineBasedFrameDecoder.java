@@ -101,13 +101,13 @@ public class LineBasedFrameDecoder extends ByteToMessageDecoder {
                 }
 
                 if (stripDelimiter) {
-                    frame = buffer.readSlice(length);
+                    frame = buffer.readRSlice(length);
                     buffer.skipBytes(delimLength);
                 } else {
-                    frame = buffer.readSlice(length + delimLength);
+                    frame = buffer.readRSlice(length + delimLength);
                 }
 
-                return frame.retain();
+                return frame;
             } else {
                 final int length = buffer.readableBytes();
                 if (length > maxLength) {

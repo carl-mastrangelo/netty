@@ -18,7 +18,6 @@ package io.netty.handler.codec.http2;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.DefaultByteBufHolder;
 import io.netty.buffer.Unpooled;
-import io.netty.util.IllegalReferenceCountException;
 
 /**
  * The default {@link Http2GoAwayFrame} implementation.
@@ -39,7 +38,7 @@ public final class DefaultHttp2GoAwayFrame extends DefaultByteBufHolder implemen
     /**
      * Equivalent to {@code new DefaultHttp2GoAwayFrame(content, Unpooled.EMPTY_BUFFER)}.
      *
-     * @param error reason for the go away
+     * @param errorCode reason for the go away
      */
     public DefaultHttp2GoAwayFrame(long errorCode) {
         this(errorCode, Unpooled.EMPTY_BUFFER);
@@ -58,7 +57,7 @@ public final class DefaultHttp2GoAwayFrame extends DefaultByteBufHolder implemen
     /**
      * Construct a new GOAWAY message.
      *
-     * @param error reason for the go away
+     * @param errorCode reason for the go away
      * @param content non-{@code null} debug data
      */
     public DefaultHttp2GoAwayFrame(long errorCode, ByteBuf content) {
@@ -77,7 +76,7 @@ public final class DefaultHttp2GoAwayFrame extends DefaultByteBufHolder implemen
     }
 
     @Override
-    public DefaultHttp2GoAwayFrame setExtraStreamIds(int extraStreamIds) {
+    public Http2GoAwayFrame setExtraStreamIds(int extraStreamIds) {
         if (extraStreamIds < 0) {
             throw new IllegalArgumentException("extraStreamIds must be non-negative");
         }
@@ -86,41 +85,45 @@ public final class DefaultHttp2GoAwayFrame extends DefaultByteBufHolder implemen
     }
 
     @Override
-    public DefaultHttp2GoAwayFrame copy() {
-        return new DefaultHttp2GoAwayFrame(errorCode, content().copy()).setExtraStreamIds(extraStreamIds);
+    public Http2GoAwayFrame copy() {
+        return (Http2GoAwayFrame) super.copy();
     }
 
     @Override
-    public DefaultHttp2GoAwayFrame duplicate() {
-        return new DefaultHttp2GoAwayFrame(errorCode, content().duplicate()).setExtraStreamIds(extraStreamIds);
+    public Http2GoAwayFrame duplicate() {
+        return (Http2GoAwayFrame) super.duplicate();
     }
 
     @Override
-    public DefaultHttp2GoAwayFrame retain() {
+    public Http2GoAwayFrame rduplicate() {
+        return (Http2GoAwayFrame) super.rduplicate();
+    }
+
+    @Override
+    protected Http2GoAwayFrame copy(ByteBuf content) {
+        return new DefaultHttp2GoAwayFrame(errorCode, content).setExtraStreamIds(extraStreamIds);
+    }
+
+    @Override
+    public Http2GoAwayFrame retain() {
         super.retain();
         return this;
     }
 
     @Override
-    public DefaultHttp2GoAwayFrame retain(int increment) {
+    public Http2GoAwayFrame retain(int increment) {
         super.retain(increment);
         return this;
     }
 
     @Override
-    public String toString() {
-        return "DefaultHttp2GoAwayFrame(errorCode=" + errorCode + ", content=" + content()
-            + ", extraStreamIds=" + extraStreamIds + ")";
-    }
-
-    @Override
-    public DefaultHttp2GoAwayFrame touch() {
+    public Http2GoAwayFrame touch() {
         super.touch();
         return this;
     }
 
     @Override
-    public DefaultHttp2GoAwayFrame touch(Object hint) {
+    public Http2GoAwayFrame touch(Object hint) {
         super.touch(hint);
         return this;
     }
@@ -142,5 +145,11 @@ public final class DefaultHttp2GoAwayFrame extends DefaultByteBufHolder implemen
         hash = hash * 31 + content().hashCode();
         hash = hash * 31 + extraStreamIds;
         return hash;
+    }
+
+    @Override
+    public String toString() {
+        return "DefaultHttp2GoAwayFrame(errorCode=" + errorCode + ", content=" + content()
+               + ", extraStreamIds=" + extraStreamIds + ")";
     }
 }

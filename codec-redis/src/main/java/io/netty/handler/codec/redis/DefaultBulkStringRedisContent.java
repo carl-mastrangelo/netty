@@ -34,6 +34,50 @@ public class DefaultBulkStringRedisContent extends DefaultByteBufHolder implemen
     }
 
     @Override
+    public BulkStringRedisContent copy() {
+        return (BulkStringRedisContent) super.copy();
+    }
+
+    @Override
+    public BulkStringRedisContent duplicate() {
+        return (BulkStringRedisContent) super.duplicate();
+    }
+
+    @Override
+    public BulkStringRedisContent rduplicate() {
+        return (BulkStringRedisContent) super.rduplicate();
+    }
+
+    @Override
+    protected BulkStringRedisContent copy(ByteBuf content) {
+        return new DefaultBulkStringRedisContent(content);
+    }
+
+    @Override
+    public BulkStringRedisContent retain() {
+        super.retain();
+        return this;
+    }
+
+    @Override
+    public BulkStringRedisContent retain(int increment) {
+        super.retain(increment);
+        return this;
+    }
+
+    @Override
+    public BulkStringRedisContent touch() {
+        super.touch();
+        return this;
+    }
+
+    @Override
+    public BulkStringRedisContent touch(Object hint) {
+        super.touch(hint);
+        return this;
+    }
+
+    @Override
     public String toString() {
         return new StringBuilder(StringUtil.simpleClassName(this))
                 .append('[')

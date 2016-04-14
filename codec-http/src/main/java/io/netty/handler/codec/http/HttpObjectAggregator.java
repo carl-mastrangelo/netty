@@ -16,7 +16,6 @@
 package io.netty.handler.codec.http;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.ByteBufHolder;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
@@ -121,11 +120,11 @@ public class HttpObjectAggregator
     protected Object newContinueResponse(HttpMessage start, int maxContentLength, ChannelPipeline pipeline) {
         if (HttpUtil.is100ContinueExpected(start)) {
             if (getContentLength(start, -1L) <= maxContentLength) {
-                return CONTINUE.duplicate().retain();
+                return CONTINUE.rduplicate();
             }
 
             pipeline.fireUserEventTriggered(HttpExpectationFailedEvent.INSTANCE);
-            return EXPECTATION_FAILED.duplicate().retain();
+            return EXPECTATION_FAILED.rduplicate();
         }
         return null;
     }
@@ -176,7 +175,7 @@ public class HttpObjectAggregator
         // See rfc2616 14.13 Content-Length
         if (!HttpUtil.isContentLengthSet(aggregated)) {
             aggregated.headers().set(
-                    HttpHeaderNames.CONTENT_LENGTH,
+                    CONTENT_LENGTH,
                     String.valueOf(aggregated.content().readableBytes()));
         }
     }
@@ -185,7 +184,7 @@ public class HttpObjectAggregator
     protected void handleOversizedMessage(final ChannelHandlerContext ctx, HttpMessage oversized) throws Exception {
         if (oversized instanceof HttpRequest) {
             // send back a 413 and close the connection
-            ChannelFuture future = ctx.writeAndFlush(TOO_LARGE.duplicate().retain()).addListener(
+            ChannelFuture future = ctx.writeAndFlush(TOO_LARGE.rduplicate()).addListener(
                     new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture future) throws Exception {
@@ -217,7 +216,7 @@ public class HttpObjectAggregator
         }
     }
 
-    private abstract static class AggregatedFullHttpMessage implements ByteBufHolder, FullHttpMessage {
+    private abstract static class AggregatedFullHttpMessage implements FullHttpMessage {
         protected final HttpMessage message;
         private final ByteBuf content;
         private HttpHeaders trailingHeaders;
@@ -327,12 +326,25 @@ public class HttpObjectAggregator
 
         @Override
         public abstract FullHttpMessage duplicate();
+
+        @Override
+        public abstract FullHttpMessage rduplicate();
     }
 
     private static final class AggregatedFullHttpRequest extends AggregatedFullHttpMessage implements FullHttpRequest {
 
         AggregatedFullHttpRequest(HttpRequest request, ByteBuf content, HttpHeaders trailingHeaders) {
             super(request, content, trailingHeaders);
+        }
+
+        @Override
+        public FullHttpRequest copy(ByteBuf newContent) {
+            return copy(false, newContent);
+        }
+
+        @Override
+        public FullHttpRequest copy() {
+            return copy(true, null);
         }
 
         /**
@@ -351,32 +363,25 @@ public class HttpObjectAggregator
          * @return A copy of this object
          */
         private FullHttpRequest copy(boolean copyContent, ByteBuf newContent) {
-            DefaultFullHttpRequest copy = new DefaultFullHttpRequest(
-                    protocolVersion(), method(), uri(),
-                    copyContent ? content().copy() :
-                            newContent == null ? Unpooled.buffer(0) : newContent);
-            copy.headers().set(headers());
-            copy.trailingHeaders().set(trailingHeaders());
-            return copy;
-        }
-
-        @Override
-        public FullHttpRequest copy(ByteBuf newContent) {
-            return copy(false, newContent);
-        }
-
-        @Override
-        public FullHttpRequest copy() {
-            return copy(true, null);
+            return dup(protocolVersion(), method(), uri(),
+                       copyContent ? content().copy() : newContent == null ? Unpooled.buffer(0) : newContent);
         }
 
         @Override
         public FullHttpRequest duplicate() {
-            DefaultFullHttpRequest duplicate = new DefaultFullHttpRequest(
-                    getProtocolVersion(), getMethod(), getUri(), content().duplicate());
-            duplicate.headers().set(headers());
-            duplicate.trailingHeaders().set(trailingHeaders());
-            return duplicate;
+            return dup(getProtocolVersion(), getMethod(), getUri(), content().duplicate());
+        }
+
+        @Override
+        public FullHttpRequest rduplicate() {
+            return dup(getProtocolVersion(), getMethod(), getUri(), content().rduplicate());
+        }
+
+        private FullHttpRequest dup(HttpVersion protocolVersion, HttpMethod method, String uri, ByteBuf content) {
+            DefaultFullHttpRequest dup = new DefaultFullHttpRequest(protocolVersion, method, uri, content);
+            dup.headers().set(headers());
+            dup.trailingHeaders().set(trailingHeaders());
+            return dup;
         }
 
         @Override
@@ -454,6 +459,16 @@ public class HttpObjectAggregator
             super(message, content, trailingHeaders);
         }
 
+        @Override
+        public FullHttpResponse copy(ByteBuf newContent) {
+            return copy(false, newContent);
+        }
+
+        @Override
+        public FullHttpResponse copy() {
+            return copy(true, null);
+        }
+
         /**
          * Copy this object
          *
@@ -470,32 +485,26 @@ public class HttpObjectAggregator
          * @return A copy of this object
          */
         private FullHttpResponse copy(boolean copyContent, ByteBuf newContent) {
-            DefaultFullHttpResponse copy = new DefaultFullHttpResponse(
-                    protocolVersion(), status(),
-                    copyContent ? content().copy() :
-                            newContent == null ? Unpooled.buffer(0) : newContent);
-            copy.headers().set(headers());
-            copy.trailingHeaders().set(trailingHeaders());
-            return copy;
-        }
-
-        @Override
-        public FullHttpResponse copy(ByteBuf newContent) {
-            return copy(false, newContent);
-        }
-
-        @Override
-        public FullHttpResponse copy() {
-            return copy(true, null);
+            return dup(protocolVersion(), status(),
+                       copyContent ? content().copy()
+                               : newContent == null ? Unpooled.buffer(0) : newContent);
         }
 
         @Override
         public FullHttpResponse duplicate() {
-            DefaultFullHttpResponse duplicate = new DefaultFullHttpResponse(getProtocolVersion(), getStatus(),
-                    content().duplicate());
-            duplicate.headers().set(headers());
-            duplicate.trailingHeaders().set(trailingHeaders());
-            return duplicate;
+            return dup(getProtocolVersion(), getStatus(), content().duplicate());
+        }
+
+        @Override
+        public FullHttpResponse rduplicate() {
+            return dup(getProtocolVersion(), getStatus(), content().rduplicate());
+        }
+
+        private FullHttpResponse dup(HttpVersion protocolVersion, HttpResponseStatus status, ByteBuf content) {
+            DefaultFullHttpResponse dup = new DefaultFullHttpResponse(protocolVersion, status, content);
+            dup.headers().set(headers());
+            dup.trailingHeaders().set(trailingHeaders());
+            return dup;
         }
 
         @Override

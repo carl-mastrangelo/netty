@@ -59,9 +59,21 @@ final class AdvancedLeakAwareCompositeByteBuf extends WrappedCompositeByteBuf {
     }
 
     @Override
+    public ByteBuf rslice() {
+        recordLeakNonRefCountingOperation(leak);
+        return new AdvancedLeakAwareByteBuf(super.rslice(), leak);
+    }
+
+    @Override
     public ByteBuf slice(int index, int length) {
         recordLeakNonRefCountingOperation(leak);
         return new AdvancedLeakAwareByteBuf(super.slice(index, length), leak);
+    }
+
+    @Override
+    public ByteBuf rslice(int index, int length) {
+        recordLeakNonRefCountingOperation(leak);
+        return new AdvancedLeakAwareByteBuf(super.rslice(index, length), leak);
     }
 
     @Override
@@ -71,9 +83,21 @@ final class AdvancedLeakAwareCompositeByteBuf extends WrappedCompositeByteBuf {
     }
 
     @Override
+    public ByteBuf rduplicate() {
+        recordLeakNonRefCountingOperation(leak);
+        return new AdvancedLeakAwareByteBuf(super.rduplicate(), leak);
+    }
+
+    @Override
     public ByteBuf readSlice(int length) {
         recordLeakNonRefCountingOperation(leak);
         return new AdvancedLeakAwareByteBuf(super.readSlice(length), leak);
+    }
+
+    @Override
+    public ByteBuf readRSlice(int length) {
+        recordLeakNonRefCountingOperation(leak);
+        return new AdvancedLeakAwareByteBuf(super.readRSlice(length), leak);
     }
 
     @Override

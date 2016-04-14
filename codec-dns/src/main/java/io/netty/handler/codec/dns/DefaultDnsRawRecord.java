@@ -67,12 +67,21 @@ public class DefaultDnsRawRecord extends AbstractDnsRecord implements DnsRawReco
 
     @Override
     public DnsRawRecord copy() {
-        return new DefaultDnsRawRecord(name(), type(), dnsClass(), timeToLive(), content().copy());
+        return copy(content().copy());
     }
 
     @Override
     public DnsRawRecord duplicate() {
-        return new DefaultDnsRawRecord(name(), type(), dnsClass(), timeToLive(), content().duplicate());
+        return copy(content().duplicate());
+    }
+
+    @Override
+    public DnsRawRecord rduplicate() {
+        return copy(content().rduplicate());
+    }
+
+    private DnsRawRecord copy(ByteBuf content) {
+        return new DefaultDnsRawRecord(name(), type(), dnsClass(), timeToLive(), content);
     }
 
     @Override

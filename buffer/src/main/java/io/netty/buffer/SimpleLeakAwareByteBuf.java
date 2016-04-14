@@ -73,8 +73,18 @@ final class SimpleLeakAwareByteBuf extends WrappedByteBuf {
     }
 
     @Override
+    public ByteBuf rslice() {
+        return new SimpleLeakAwareByteBuf(super.rslice(), leak);
+    }
+
+    @Override
     public ByteBuf slice(int index, int length) {
         return new SimpleLeakAwareByteBuf(super.slice(index, length), leak);
+    }
+
+    @Override
+    public ByteBuf rslice(int index, int length) {
+        return new SimpleLeakAwareByteBuf(super.rslice(index, length), leak);
     }
 
     @Override
@@ -83,7 +93,17 @@ final class SimpleLeakAwareByteBuf extends WrappedByteBuf {
     }
 
     @Override
+    public ByteBuf rduplicate() {
+        return new SimpleLeakAwareByteBuf(super.rduplicate(), leak);
+    }
+
+    @Override
     public ByteBuf readSlice(int length) {
         return new SimpleLeakAwareByteBuf(super.readSlice(length), leak);
+    }
+
+    @Override
+    public ByteBuf readRSlice(int length) {
+        return new SimpleLeakAwareByteBuf(super.readRSlice(length), leak);
     }
 }

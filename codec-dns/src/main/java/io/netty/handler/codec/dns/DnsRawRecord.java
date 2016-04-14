@@ -28,6 +28,9 @@ public interface DnsRawRecord extends DnsRecord, ByteBufHolder {
     DnsRawRecord duplicate();
 
     @Override
+    DnsRawRecord rduplicate();
+
+    @Override
     DnsRawRecord retain();
 
     @Override

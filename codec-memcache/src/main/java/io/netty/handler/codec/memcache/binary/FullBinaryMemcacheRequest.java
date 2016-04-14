@@ -26,6 +26,12 @@ public interface FullBinaryMemcacheRequest extends BinaryMemcacheRequest, FullMe
     FullBinaryMemcacheRequest copy();
 
     @Override
+    FullBinaryMemcacheRequest duplicate();
+
+    @Override
+    FullBinaryMemcacheRequest rduplicate();
+
+    @Override
     FullBinaryMemcacheRequest retain(int increment);
 
     @Override
@@ -36,7 +42,4 @@ public interface FullBinaryMemcacheRequest extends BinaryMemcacheRequest, FullMe
 
     @Override
     FullBinaryMemcacheRequest touch(Object hint);
-
-    @Override
-    FullBinaryMemcacheRequest duplicate();
 }

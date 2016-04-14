@@ -65,4 +65,9 @@ public class DefaultLastMemcacheContent extends DefaultMemcacheContent implement
     public LastMemcacheContent duplicate() {
         return new DefaultLastMemcacheContent(content().duplicate());
     }
+
+    @Override
+    public LastMemcacheContent rduplicate() {
+        return new DefaultLastMemcacheContent(content().rduplicate());
+    }
 }

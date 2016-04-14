@@ -41,6 +41,11 @@ public interface LastSmtpContent extends SmtpContent {
         }
 
         @Override
+        public LastSmtpContent rduplicate() {
+            return this;
+        }
+
+        @Override
         public LastSmtpContent retain() {
             return this;
         }
@@ -86,6 +91,9 @@ public interface LastSmtpContent extends SmtpContent {
 
     @Override
     LastSmtpContent duplicate();
+
+    @Override
+    LastSmtpContent rduplicate();
 
     @Override
     LastSmtpContent retain();

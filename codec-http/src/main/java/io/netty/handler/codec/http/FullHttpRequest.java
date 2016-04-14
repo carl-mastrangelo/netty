@@ -29,6 +29,12 @@ public interface FullHttpRequest extends HttpRequest, FullHttpMessage {
     FullHttpRequest copy();
 
     @Override
+    FullHttpRequest duplicate();
+
+    @Override
+    FullHttpRequest rduplicate();
+
+    @Override
     FullHttpRequest retain(int increment);
 
     @Override
@@ -39,9 +45,6 @@ public interface FullHttpRequest extends HttpRequest, FullHttpMessage {
 
     @Override
     FullHttpRequest touch(Object hint);
-
-    @Override
-    FullHttpRequest duplicate();
 
     @Override
     FullHttpRequest setProtocolVersion(HttpVersion version);

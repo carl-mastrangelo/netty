@@ -36,6 +36,12 @@ public interface FullHttpMessage extends HttpMessage, LastHttpContent {
     FullHttpMessage copy();
 
     @Override
+    FullHttpMessage duplicate();
+
+    @Override
+    FullHttpMessage rduplicate();
+
+    @Override
     FullHttpMessage retain(int increment);
 
     @Override
@@ -46,7 +52,4 @@ public interface FullHttpMessage extends HttpMessage, LastHttpContent {
 
     @Override
     FullHttpMessage touch(Object hint);
-
-    @Override
-    FullHttpMessage duplicate();
 }

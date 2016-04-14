@@ -43,12 +43,26 @@ public class DefaultByteBufHolder implements ByteBufHolder {
 
     @Override
     public ByteBufHolder copy() {
-        return new DefaultByteBufHolder(data.copy());
+        return copy(data.copy());
     }
 
     @Override
     public ByteBufHolder duplicate() {
-        return new DefaultByteBufHolder(data.duplicate());
+        return copy(data.duplicate());
+    }
+
+    @Override
+    public ByteBufHolder rduplicate() {
+        return copy(data.rduplicate());
+    }
+
+    /**
+     * Override this method to return a new copy of this object whose content is set to the specified {@code content}.
+     * The default implementation of {@link #copy()}, {@link #duplicate()} and {@link #rduplicate()} invokes this
+     * method to create a copy.
+     */
+    protected ByteBufHolder copy(ByteBuf content) {
+        return new DefaultByteBufHolder(content);
     }
 
     @Override

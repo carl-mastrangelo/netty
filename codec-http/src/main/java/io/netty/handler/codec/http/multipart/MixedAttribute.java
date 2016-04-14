@@ -272,6 +272,11 @@ public class MixedAttribute implements Attribute {
     }
 
     @Override
+    public Attribute rduplicate() {
+        return attribute.rduplicate();
+    }
+
+    @Override
     public ByteBuf content() {
         return attribute.content();
     }

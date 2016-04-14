@@ -191,6 +191,21 @@ public class DiskAttribute extends AbstractDiskHttpData implements Attribute {
     }
 
     @Override
+    public Attribute rduplicate() {
+        DiskAttribute attr = new DiskAttribute(getName());
+        attr.setCharset(getCharset());
+        ByteBuf content = content();
+        if (content != null) {
+            try {
+                attr.setContent(content.rduplicate());
+            } catch (IOException e) {
+                throw new ChannelException(e);
+            }
+        }
+        return attr;
+    }
+
+    @Override
     public Attribute retain(int increment) {
         super.retain(increment);
         return this;

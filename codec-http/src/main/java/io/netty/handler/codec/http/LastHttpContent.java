@@ -45,6 +45,11 @@ public interface LastHttpContent extends HttpContent {
         }
 
         @Override
+        public LastHttpContent rduplicate() {
+            return this;
+        }
+
+        @Override
         public HttpHeaders trailingHeaders() {
             return EmptyHttpHeaders.INSTANCE;
         }
@@ -112,6 +117,12 @@ public interface LastHttpContent extends HttpContent {
     LastHttpContent copy();
 
     @Override
+    LastHttpContent duplicate();
+
+    @Override
+    LastHttpContent rduplicate();
+
+    @Override
     LastHttpContent retain(int increment);
 
     @Override
@@ -122,7 +133,4 @@ public interface LastHttpContent extends HttpContent {
 
     @Override
     LastHttpContent touch(Object hint);
-
-    @Override
-    LastHttpContent duplicate();
 }

@@ -337,7 +337,7 @@ public class Http2ConnectionRoundtripTest {
                 public void run() throws Http2Exception {
                     http2Client.encoder().writeHeaders(ctx(), 3, headers, 0, (short) 16, false, 0,
                             false, newPromise());
-                    http2Client.encoder().writeData(ctx(), 3, data.duplicate().retain(), 0, false, newPromise());
+                    http2Client.encoder().writeData(ctx(), 3, data.rduplicate(), 0, false, newPromise());
 
                     // Write trailers.
                     http2Client.encoder().writeHeaders(ctx(), 3, headers, 0, (short) 16, false, 0,
@@ -422,10 +422,10 @@ public class Http2ConnectionRoundtripTest {
                         // Send a bunch of data on each stream.
                         http2Client.encoder().writeHeaders(ctx(), streamId, headers, 0, (short) 16,
                                 false, 0, false, newPromise());
-                        http2Client.encoder().writePing(ctx(), false, pingData.slice().retain(),
+                        http2Client.encoder().writePing(ctx(), false, pingData.rslice(),
                                 newPromise());
-                        http2Client.encoder().writeData(ctx(), streamId, data.slice().retain(), 0,
-                                false, newPromise());
+                        http2Client.encoder().writeData(ctx(), streamId, data.rslice(), 0,
+                                                        false, newPromise());
                         // Write trailers.
                         http2Client.encoder().writeHeaders(ctx(), streamId, headers, 0, (short) 16,
                                 false, 0, true, newPromise());

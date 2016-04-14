@@ -83,6 +83,11 @@ public class FullBulkStringRedisMessage extends DefaultByteBufHolder implements 
         }
 
         @Override
+        public FullBulkStringRedisMessage rduplicate() {
+            return this;
+        }
+
+        @Override
         public int refCnt() {
             return 1;
         }
@@ -129,11 +134,16 @@ public class FullBulkStringRedisMessage extends DefaultByteBufHolder implements 
 
         @Override
         public FullBulkStringRedisMessage copy() {
-            return EMPTY_INSTANCE;
+            return this;
         }
 
         @Override
         public FullBulkStringRedisMessage duplicate() {
+            return this;
+        }
+
+        @Override
+        public FullBulkStringRedisMessage rduplicate() {
             return this;
         }
 
@@ -172,4 +182,48 @@ public class FullBulkStringRedisMessage extends DefaultByteBufHolder implements 
             return false;
         }
     };
+
+    @Override
+    public FullBulkStringRedisMessage copy() {
+        return (FullBulkStringRedisMessage) super.copy();
+    }
+
+    @Override
+    public FullBulkStringRedisMessage duplicate() {
+        return (FullBulkStringRedisMessage) super.duplicate();
+    }
+
+    @Override
+    public FullBulkStringRedisMessage rduplicate() {
+        return (FullBulkStringRedisMessage) super.rduplicate();
+    }
+
+    @Override
+    protected FullBulkStringRedisMessage copy(ByteBuf content) {
+        return new FullBulkStringRedisMessage(content);
+    }
+
+    @Override
+    public FullBulkStringRedisMessage retain() {
+        super.retain();
+        return this;
+    }
+
+    @Override
+    public FullBulkStringRedisMessage retain(int increment) {
+        super.retain(increment);
+        return this;
+    }
+
+    @Override
+    public FullBulkStringRedisMessage touch() {
+        super.touch();
+        return this;
+    }
+
+    @Override
+    public FullBulkStringRedisMessage touch(Object hint) {
+        super.touch(hint);
+        return this;
+    }
 }

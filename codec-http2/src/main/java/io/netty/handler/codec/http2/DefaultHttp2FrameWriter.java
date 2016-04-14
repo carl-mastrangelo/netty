@@ -15,6 +15,13 @@
 
 package io.netty.handler.codec.http2;
 
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http2.Http2CodecUtil.SimpleChannelPromiseAggregator;
+import io.netty.handler.codec.http2.Http2FrameWriter.Configuration;
+
 import static io.netty.buffer.Unpooled.directBuffer;
 import static io.netty.buffer.Unpooled.unreleasableBuffer;
 import static io.netty.handler.codec.http2.Http2CodecUtil.CONTINUATION_FRAME_HEADER_LENGTH;
@@ -54,13 +61,6 @@ import static io.netty.handler.codec.http2.Http2FrameTypes.WINDOW_UPDATE;
 import static io.netty.util.internal.ObjectUtil.checkNotNull;
 import static java.lang.Math.max;
 import static java.lang.Math.min;
-
-import io.netty.buffer.ByteBuf;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelPromise;
-import io.netty.handler.codec.http2.Http2CodecUtil.SimpleChannelPromiseAggregator;
-import io.netty.handler.codec.http2.Http2FrameWriter.Configuration;
 
 /**
  * A {@link Http2FrameWriter} that supports all frame types defined by the HTTP/2 specification.
@@ -302,8 +302,7 @@ public class DefaultHttp2FrameWriter implements Http2FrameWriter, Http2FrameSize
             // INT_FIELD_LENGTH is for the length of the promisedStreamId
             int nonFragmentLength = INT_FIELD_LENGTH + padding + flags.getPaddingPresenceFieldLength();
             int maxFragmentLength = maxFrameSize - nonFragmentLength;
-            ByteBuf fragment =
-                    headerBlock.readSlice(min(headerBlock.readableBytes(), maxFragmentLength));
+            ByteBuf fragment = headerBlock.readRSlice(min(headerBlock.readableBytes(), maxFragmentLength));
 
             flags.endOfHeaders(!headerBlock.isReadable());
 
@@ -317,7 +316,7 @@ public class DefaultHttp2FrameWriter implements Http2FrameWriter, Http2FrameSize
             ctx.write(buf, promiseAggregator.newPromise());
 
             // Write the first fragment.
-            ctx.write(fragment.retain(), promiseAggregator.newPromise());
+            ctx.write(fragment, promiseAggregator.newPromise());
 
             if (padding > 0) { // Write out the padding, if any.
                 ctx.write(ZERO_BUFFER.slice(0, padding), promiseAggregator.newPromise());
@@ -427,8 +426,7 @@ public class DefaultHttp2FrameWriter implements Http2FrameWriter, Http2FrameSize
             // Read the first fragment (possibly everything).
             int nonFragmentBytes = padding + flags.getNumPriorityBytes() + flags.getPaddingPresenceFieldLength();
             int maxFragmentLength = maxFrameSize - nonFragmentBytes;
-            ByteBuf fragment =
-                    headerBlock.readSlice(min(headerBlock.readableBytes(), maxFragmentLength));
+            ByteBuf fragment = headerBlock.readRSlice(min(headerBlock.readableBytes(), maxFragmentLength));
 
             // Set the end of headers flag for the first frame.
             flags.endOfHeaders(!headerBlock.isReadable());
@@ -448,7 +446,7 @@ public class DefaultHttp2FrameWriter implements Http2FrameWriter, Http2FrameSize
             ctx.write(buf, promiseAggregator.newPromise());
 
             // Write the first fragment.
-            ctx.write(fragment.retain(), promiseAggregator.newPromise());
+            ctx.write(fragment, promiseAggregator.newPromise());
 
             if (padding > 0) { // Write out the padding, if any.
                 ctx.write(ZERO_BUFFER.slice(0, padding), promiseAggregator.newPromise());
@@ -491,7 +489,7 @@ public class DefaultHttp2FrameWriter implements Http2FrameWriter, Http2FrameSize
 
             do {
                 fragmentReadableBytes = min(headerBlock.readableBytes(), maxFragmentLength);
-                ByteBuf fragment = headerBlock.readSlice(fragmentReadableBytes).retain();
+                ByteBuf fragment = headerBlock.readRSlice(fragmentReadableBytes);
 
                 payloadLength = fragmentReadableBytes + nonFragmentLength;
                 if (headerBlock.isReadable()) {

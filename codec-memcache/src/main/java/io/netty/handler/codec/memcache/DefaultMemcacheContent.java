@@ -51,6 +51,11 @@ public class DefaultMemcacheContent extends AbstractMemcacheObject implements Me
     }
 
     @Override
+    public MemcacheContent rduplicate() {
+        return new DefaultMemcacheContent(content.rduplicate());
+    }
+
+    @Override
     public MemcacheContent retain() {
         super.retain();
         return this;

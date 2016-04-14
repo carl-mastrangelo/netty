@@ -37,6 +37,13 @@ public interface ByteBufHolder extends ReferenceCounted {
      */
     ByteBufHolder duplicate();
 
+    /**
+     * Duplicate the {@link ByteBufHolder}. This method returns a retained duplicate unlike {@link #duplicate()}.
+     *
+     * @see ByteBuf#rduplicate()
+     */
+    ByteBufHolder rduplicate();
+
     @Override
     ByteBufHolder retain();
 

@@ -45,6 +45,11 @@ public interface LastStompContentSubframe extends StompContentSubframe {
         }
 
         @Override
+        public LastStompContentSubframe rduplicate() {
+            return this;
+        }
+
+        @Override
         public LastStompContentSubframe retain() {
             return this;
         }
@@ -95,6 +100,9 @@ public interface LastStompContentSubframe extends StompContentSubframe {
 
     @Override
     LastStompContentSubframe duplicate();
+
+    @Override
+    LastStompContentSubframe rduplicate();
 
     @Override
     LastStompContentSubframe retain();

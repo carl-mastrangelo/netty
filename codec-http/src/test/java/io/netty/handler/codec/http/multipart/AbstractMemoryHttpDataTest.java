@@ -88,6 +88,11 @@ public class AbstractMemoryHttpDataTest {
         }
 
         @Override
+        public HttpData rduplicate() {
+            throw new UnsupportedOperationException("Should never be called.");
+        }
+
+        @Override
         public int compareTo(InterfaceHttpData o) {
             throw new UnsupportedOperationException("Should never be called.");
         }

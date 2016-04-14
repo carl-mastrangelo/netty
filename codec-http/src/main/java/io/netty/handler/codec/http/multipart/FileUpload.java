@@ -63,6 +63,9 @@ public interface FileUpload extends HttpData {
     FileUpload duplicate();
 
     @Override
+    FileUpload rduplicate();
+
+    @Override
     FileUpload retain();
 
     @Override

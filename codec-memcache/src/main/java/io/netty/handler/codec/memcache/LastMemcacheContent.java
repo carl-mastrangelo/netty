@@ -36,6 +36,16 @@ public interface LastMemcacheContent extends MemcacheContent {
         }
 
         @Override
+        public LastMemcacheContent duplicate() {
+            return this;
+        }
+
+        @Override
+        public LastMemcacheContent rduplicate() {
+            return this;
+        }
+
+        @Override
         public LastMemcacheContent retain(int increment) {
             return this;
         }
@@ -52,11 +62,6 @@ public interface LastMemcacheContent extends MemcacheContent {
 
         @Override
         public LastMemcacheContent touch(Object hint) {
-            return this;
-        }
-
-        @Override
-        public LastMemcacheContent duplicate() {
             return this;
         }
 
@@ -95,6 +100,12 @@ public interface LastMemcacheContent extends MemcacheContent {
     LastMemcacheContent copy();
 
     @Override
+    LastMemcacheContent duplicate();
+
+    @Override
+    LastMemcacheContent rduplicate();
+
+    @Override
     LastMemcacheContent retain(int increment);
 
     @Override
@@ -105,7 +116,4 @@ public interface LastMemcacheContent extends MemcacheContent {
 
     @Override
     LastMemcacheContent touch(Object hint);
-
-    @Override
-    LastMemcacheContent duplicate();
 }
