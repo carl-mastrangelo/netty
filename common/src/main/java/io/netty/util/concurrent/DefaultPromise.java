@@ -24,7 +24,13 @@ import io.netty.util.internal.ThrowableUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
+import javax.naming.Name;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
@@ -38,32 +44,49 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     private static final int MAX_LISTENER_STACK_DEPTH = Math.min(8,
             SystemPropertyUtil.getInt("io.netty.defaultPromise.maxListenerStackDepth", 8));
     @SuppressWarnings("rawtypes")
-    private static final AtomicReferenceFieldUpdater<DefaultPromise, Object> RESULT_UPDATER =
-            AtomicReferenceFieldUpdater.newUpdater(DefaultPromise.class, Object.class, "result");
+    private static final AtomicReferenceFieldUpdater<DefaultPromise, Object> SLOT_UPDATER =
+            AtomicReferenceFieldUpdater.newUpdater(DefaultPromise.class, Object.class, "slot");
     private static final Signal SUCCESS = Signal.valueOf(DefaultPromise.class, "SUCCESS");
     private static final Signal UNCANCELLABLE = Signal.valueOf(DefaultPromise.class, "UNCANCELLABLE");
     private static final CauseHolder CANCELLATION_CAUSE_HOLDER = new CauseHolder(ThrowableUtil.unknownStackTrace(
             new CancellationException(), DefaultPromise.class, "cancel(...)"));
 
-    private volatile Object result;
+    /**
+     * This can be many things:
+     * <ol>
+     *   <li>{@code null} -  No result, no listeners, cancellable.</li>
+     *   <li>{@link SingleCancellableListener} - No result, one listener, cancellable</li>
+     *   <li>{@link MultipleListeners} - No result, multiple listeners</li>
+     *   <li>{@link CauseHolder} - Failure, no listeners</li>
+     *   <li>{@link #NOTHING} - A result which is null</li>
+     *   <li>Anything else - the result.</li>
+     * </ol>
+     */
+    private volatile Object slot;
     private final EventExecutor executor;
-    /**
-     * One or more listeners. Can be a {@link GenericFutureListener} or a {@link DefaultFutureListeners}.
-     * If {@code null}, it means either 1) no listeners were added yet or 2) all listeners were notified.
-     *
-     * Threading - synchronized(this). We must support adding listeners when there is no EventExecutor.
-     */
-    private Object listeners;
-    /**
-     * Threading - synchronized(this). We are required to hold the monitor to use Java's underlying wait()/notifyAll().
-     */
-    private short waiters;
 
-    /**
-     * Threading - synchronized(this). We must prevent concurrent notification and FIFO listener notification if the
-     * executor changes.
-     */
-    private boolean notifyingListeners;
+    private static final Object NOTHING = new Object();
+    private static Object nonNullResult(Object res) {
+        return res != null ? res : NOTHING;
+    }
+
+    private static final class SingleCancellableListener {
+        final GenericFutureListener<?> listener;
+
+        SingleCancellableListener(GenericFutureListener<?> listener) {
+            this.listener = listener;
+        }
+    }
+
+    private static final class MultipleListeners {
+        final List<? extends GenericFutureListener<?>> listeners;
+        final boolean uncancellable;
+
+        MultipleListeners(List<? extends GenericFutureListener<?>> listeners, boolean uncancellable) {
+            this.listeners = listeners;
+            this.uncancellable = uncancellable;
+        }
+    }
 
     /**
      * Creates a new instance.
@@ -90,9 +113,8 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     }
 
     @Override
-    public Promise<V> setSuccess(V result) {
-        if (setSuccess0(result)) {
-            notifyListeners();
+    public Promise<V> setSuccess(final V result) {
+        if (trySuccess(result)) {
             return this;
         }
         throw new IllegalStateException("complete already: " + this);
@@ -100,70 +122,178 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
 
     @Override
     public boolean trySuccess(V result) {
-        if (setSuccess0(result)) {
-            notifyListeners();
-            return true;
+        final Object res = nonNullResult(result);
+
+        while (true) {
+            final Object s = SLOT_UPDATER.get(this);
+            if (s == null) {
+                if (SLOT_UPDATER.compareAndSet(this, s, res)) {
+                    return true;
+                }
+            } else if (s instanceof SingleCancellableListener) {
+                if (SLOT_UPDATER.compareAndSet(this, s, res)) {
+                    notifyListener0(this, ((SingleCancellableListener) s).listener);
+                    return true;
+                }
+            } else if (s instanceof MultipleListeners) {
+                if (SLOT_UPDATER.compareAndSet(this, s, res)) {
+                    for (GenericFutureListener<?> listener  : ((MultipleListeners) s).listeners) {
+                        notifyListener0(this, listener);
+                    }
+                    return true;
+                }
+            } else {
+                // CauseHolder, NOTHING, or an actual result.
+                return false;
+            }
         }
-        return false;
     }
 
     @Override
     public Promise<V> setFailure(Throwable cause) {
-        if (setFailure0(cause)) {
-            notifyListeners();
+        if (tryFailure(cause)) {
             return this;
         }
         throw new IllegalStateException("complete already: " + this, cause);
     }
 
     @Override
-    public boolean tryFailure(Throwable cause) {
-        if (setFailure0(cause)) {
-            notifyListeners();
+    public boolean tryFailure(final Throwable cause) {
+        if (cause == null) {
+            throw new NullPointerException();
+        }
+        CauseHolder holder = new CauseHolder(cause);
+
+        while (true) {
+            final Object s = SLOT_UPDATER.get(this);
+            if (s == null) {
+                if (SLOT_UPDATER.compareAndSet(this, s, holder)) {
+                    return true;
+                }
+            } else if (s instanceof SingleCancellableListener) {
+                if (SLOT_UPDATER.compareAndSet(this, s, holder)) {
+                    notifyListener0(this, ((SingleCancellableListener) s).listener);
+                    return true;
+                }
+            } else if (s instanceof MultipleListeners) {
+                 if (SLOT_UPDATER.compareAndSet(this, s, holder)) {
+                    for (GenericFutureListener<?> listener  : ((MultipleListeners) s).listeners) {
+                        notifyListener0(this, listener);
+                    }
+                    return true;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @Override
+    public boolean setUncancellable() {
+        while (true) {
+            final Object s = SLOT_UPDATER.get(this);
+            if (s == null) {
+                final MultipleListeners listeners = new MultipleListeners(null, true);
+                if (SLOT_UPDATER.compareAndSet(this, s, listeners)) {
+                    return true;
+                }
+            } else if (s instanceof SingleCancellableListener) {
+                final MultipleListeners listeners =
+                        new MultipleListeners(
+                                Collections.singletonList(((SingleCancellableListener) s).listener), true);
+                if (SLOT_UPDATER.compareAndSet(this, s, listeners)) {
+                    return true;
+                }
+            } else if (s instanceof MultipleListeners) {
+                final MultipleListeners oldListeners = (MultipleListeners) s;
+                if (oldListeners.uncancellable) {
+                    return true;
+                }
+                final MultipleListeners newListeners =
+                        new MultipleListeners(oldListeners.listeners, oldListeners.uncancellable);
+                if (SLOT_UPDATER.compareAndSet(this, s, newListeners)) {
+                    return true;
+                }
+            } else {
+                return false;
+            }
+        }
+    }
+
+    @Override
+    public boolean isSuccess() {
+        final Object s = this.slot;
+        if (s == null) {
+            return false;
+        }
+        if (s instanceof CauseHolder) {
+            return false;
+        }
+        if (s instanceof SingleCancellableListener || s instanceof MultipleListeners) {
+            return false;
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean isCancellable() {
+        final Object s = this.slot;
+        if (s == null) {
+            return true;
+        }
+        if (s instanceof SingleCancellableListener) {
+            return true;
+        }
+        if (s instanceof MultipleListeners && !((MultipleListeners) s).uncancellable) {
             return true;
         }
         return false;
     }
 
     @Override
-    public boolean setUncancellable() {
-        if (RESULT_UPDATER.compareAndSet(this, null, UNCANCELLABLE)) {
-            return true;
-        }
-        Object result = this.result;
-        return !isDone0(result) || !isCancelled0(result);
-    }
-
-    @Override
-    public boolean isSuccess() {
-        Object result = this.result;
-        return result != null && result != UNCANCELLABLE && !(result instanceof CauseHolder);
-    }
-
-    @Override
-    public boolean isCancellable() {
-        return result == null;
-    }
-
-    @Override
     public Throwable cause() {
-        Object result = this.result;
-        return (result instanceof CauseHolder) ? ((CauseHolder) result).cause : null;
+        final Object s = this.slot;
+        if (s instanceof CauseHolder) {
+            return ((CauseHolder) s).cause;
+        }
+        return null;
     }
 
     @Override
     public Promise<V> addListener(GenericFutureListener<? extends Future<? super V>> listener) {
         checkNotNull(listener, "listener");
 
-        synchronized (this) {
-            addListener0(listener);
+        while (true) {
+            final Object s = SLOT_UPDATER.get(this);
+            if (s == null) {
+                if (SLOT_UPDATER.compareAndSet(this, s, new SingleCancellableListener(listener))) {
+                    return this;
+                }
+            } else if (s instanceof SingleCancellableListener) {
+                final SingleCancellableListener oldListener = (SingleCancellableListener) s;
+                final List<GenericFutureListener<?>> array = new ArrayList<GenericFutureListener<?>>(2);
+                array.add(oldListener.listener);
+                array.add(listener);
+                final MultipleListeners newListeners = new MultipleListeners(array, false);
+                if (SLOT_UPDATER.compareAndSet(this, s, newListeners)) {
+                    return this;
+                }
+            } else if (s instanceof MultipleListeners) {
+                final MultipleListeners oldListeners = (MultipleListeners) s;
+                final List<GenericFutureListener<?>> array =
+                        new ArrayList<GenericFutureListener<?>>(oldListeners.listeners.size() + 1);
+                array.addAll(oldListeners.listeners);
+                array.add(listener);
+                final MultipleListeners newListeners = new MultipleListeners(array, oldListeners.uncancellable);
+                if (SLOT_UPDATER.compareAndSet(this, s, newListeners)) {
+                    return this;
+                }
+            } else {
+                notifyListener0(this, listener);
+                return this;
+            }
         }
-
-        if (isDone()) {
-            notifyListeners();
-        }
-
-        return this;
     }
 
     @Override
@@ -222,50 +352,37 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         if (Thread.interrupted()) {
             throw new InterruptedException(toString());
         }
+        final class LatchListener extends CountDownLatch implements GenericFutureListener<Future<? super V>> {
+            LatchListener() {
+                super(1);
+            }
 
-        checkDeadLock();
-
-        synchronized (this) {
-            while (!isDone()) {
-                incWaiters();
-                try {
-                    wait();
-                } finally {
-                    decWaiters();
-                }
+            @Override
+            public void operationComplete(Future<? super V> future) throws Exception {
+                countDown();
             }
         }
+        final LatchListener latch = new LatchListener();
+        addListener(latch);
+        latch.await();
+
         return this;
     }
 
     @Override
     public Promise<V> awaitUninterruptibly() {
-        if (isDone()) {
-            return this;
-        }
-
-        checkDeadLock();
-
         boolean interrupted = false;
-        synchronized (this) {
-            while (!isDone()) {
-                incWaiters();
-                try {
-                    wait();
-                } catch (InterruptedException e) {
-                    // Interrupted while waiting.
-                    interrupted = true;
-                } finally {
-                    decWaiters();
+        while (true) {
+            try {
+                return await();
+            } catch (InterruptedException e) {
+                interrupted = true;
+            } finally {
+                if (interrupted) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }
-
-        if (interrupted) {
-            Thread.currentThread().interrupt();
-        }
-
-        return this;
     }
 
     @Override
@@ -541,31 +658,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         return setValue0(new CauseHolder(checkNotNull(cause, "cause")));
     }
 
-    private boolean setValue0(Object objResult) {
-        if (RESULT_UPDATER.compareAndSet(this, null, objResult) ||
-            RESULT_UPDATER.compareAndSet(this, UNCANCELLABLE, objResult)) {
-            checkNotifyWaiters();
-            return true;
-        }
-        return false;
-    }
 
-    private synchronized void checkNotifyWaiters() {
-        if (waiters > 0) {
-            notifyAll();
-        }
-    }
-
-    private void incWaiters() {
-        if (waiters == Short.MAX_VALUE) {
-            throw new IllegalStateException("too many waiters: " + this);
-        }
-        ++waiters;
-    }
-
-    private void decWaiters() {
-        --waiters;
-    }
 
     private void rethrowIfFailed() {
         Throwable cause = cause();
@@ -578,55 +671,28 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
 
     private boolean await0(long timeoutNanos, boolean interruptable) throws InterruptedException {
         if (isDone()) {
-            return true;
+            return this;
         }
 
-        if (timeoutNanos <= 0) {
-            return isDone();
-        }
-
-        if (interruptable && Thread.interrupted()) {
+        if (Thread.interrupted()) {
             throw new InterruptedException(toString());
         }
-
-        checkDeadLock();
-
-        long startTime = System.nanoTime();
-        long waitTime = timeoutNanos;
-        boolean interrupted = false;
-        try {
-            for (;;) {
-                synchronized (this) {
-                    if (isDone()) {
-                        return true;
-                    }
-                    incWaiters();
-                    try {
-                        wait(waitTime / 1000000, (int) (waitTime % 1000000));
-                    } catch (InterruptedException e) {
-                        if (interruptable) {
-                            throw e;
-                        } else {
-                            interrupted = true;
-                        }
-                    } finally {
-                        decWaiters();
-                    }
-                }
-                if (isDone()) {
-                    return true;
-                } else {
-                    waitTime = timeoutNanos - (System.nanoTime() - startTime);
-                    if (waitTime <= 0) {
-                        return isDone();
-                    }
-                }
+        final class LatchListener extends CountDownLatch implements GenericFutureListener<Future<? super V>> {
+            LatchListener() {
+                super(1);
             }
-        } finally {
-            if (interrupted) {
-                Thread.currentThread().interrupt();
+
+            @Override
+            public void operationComplete(Future<? super V> future) throws Exception {
+                countDown();
             }
         }
+        final LatchListener latch = new LatchListener();
+        addListener(latch);
+        latch.await();
+
+        return this;
+
     }
 
     /**
