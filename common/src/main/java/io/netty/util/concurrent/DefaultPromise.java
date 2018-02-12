@@ -671,10 +671,10 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
 
     private boolean await0(long timeoutNanos, boolean interruptable) throws InterruptedException {
         if (isDone()) {
-            return this;
+            return true;
         }
 
-        if (Thread.interrupted()) {
+        if (interruptable && Thread.interrupted()) {
             throw new InterruptedException(toString());
         }
         final class LatchListener extends CountDownLatch implements GenericFutureListener<Future<? super V>> {
@@ -689,10 +689,20 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
         }
         final LatchListener latch = new LatchListener();
         addListener(latch);
-        latch.await();
 
-        return this;
-
+        long start = System.nanoTime();
+        while (true) {
+            try {
+                return latch.await(timeoutNanos, TimeUnit.NANOSECONDS);
+            } catch (InterruptedException e) {
+                if (interruptable) {
+                    return false;
+                }
+                long end = System.nanoTime();
+                timeoutNanos -= (end - start);
+                start = end;
+            }
+        }
     }
 
     /**
