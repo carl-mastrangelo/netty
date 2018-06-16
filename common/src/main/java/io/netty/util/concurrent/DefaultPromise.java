@@ -222,7 +222,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
 
     @Override
     public boolean isSuccess() {
-        final Object s = this.slot;
+        final Object s = SLOT_UPDATER.get(this);
         if (s == null) {
             return false;
         }
@@ -253,7 +253,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
 
     @Override
     public Throwable cause() {
-        final Object s = this.slot;
+        final Object s = SLOT_UPDATER.get(this);
         if (s instanceof CauseHolder) {
             return ((CauseHolder) s).cause;
         }
@@ -263,18 +263,21 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     @Override
     public Promise<V> addListener(GenericFutureListener<? extends Future<? super V>> listener) {
         checkNotNull(listener, "listener");
+        return addListenersInternal(Collections.<GenericFutureListener<? extends Future<? super V>>>singletonList(listener));
+    }
 
+    private Promise<V> addListenersInternal(final List<GenericFutureListener<? extends Future<? super V>>> listeners) {
         while (true) {
             final Object s = SLOT_UPDATER.get(this);
-            if (s == null) {
-                if (SLOT_UPDATER.compareAndSet(this, s, new SingleCancellableListener(listener))) {
+            if (s == null && listeners.size() == 1) {
+                if (SLOT_UPDATER.compareAndSet(this, s, new SingleCancellableListener(listeners.get(0)))) {
                     return this;
                 }
             } else if (s instanceof SingleCancellableListener) {
                 final SingleCancellableListener oldListener = (SingleCancellableListener) s;
-                final List<GenericFutureListener<?>> array = new ArrayList<GenericFutureListener<?>>(2);
+                final List<GenericFutureListener<?>> array = new ArrayList<GenericFutureListener<?>>(1 + listeners.size());
                 array.add(oldListener.listener);
-                array.add(listener);
+                array.addAll(listeners);
                 final MultipleListeners newListeners = new MultipleListeners(array, false);
                 if (SLOT_UPDATER.compareAndSet(this, s, newListeners)) {
                     return this;
@@ -282,15 +285,15 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
             } else if (s instanceof MultipleListeners) {
                 final MultipleListeners oldListeners = (MultipleListeners) s;
                 final List<GenericFutureListener<?>> array =
-                        new ArrayList<GenericFutureListener<?>>(oldListeners.listeners.size() + 1);
+                    new ArrayList<GenericFutureListener<?>>(oldListeners.listeners.size() + listeners.size());
                 array.addAll(oldListeners.listeners);
-                array.add(listener);
+                array.addAll(listeners);
                 final MultipleListeners newListeners = new MultipleListeners(array, oldListeners.uncancellable);
                 if (SLOT_UPDATER.compareAndSet(this, s, newListeners)) {
                     return this;
                 }
             } else {
-                notifyListener0(this, listener);
+                notifyListeners(this, listener);
                 return this;
             }
         }
@@ -299,21 +302,10 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     @Override
     public Promise<V> addListeners(GenericFutureListener<? extends Future<? super V>>... listeners) {
         checkNotNull(listeners, "listeners");
-
-        synchronized (this) {
-            for (GenericFutureListener<? extends Future<? super V>> listener : listeners) {
-                if (listener == null) {
-                    break;
-                }
-                addListener0(listener);
-            }
+        for (int i = 0; i < listeners.length; i++) {
+            checkNotNull(listeners[i], "listener");
         }
-
-        if (isDone()) {
-            notifyListeners();
-        }
-
-        return this;
+        return addListenersInternal(Arrays.asList(listeners));
     }
 
     @Override
@@ -418,7 +410,7 @@ public class DefaultPromise<V> extends AbstractFuture<V> implements Promise<V> {
     @SuppressWarnings("unchecked")
     @Override
     public V getNow() {
-        Object result = this.result;
+        Object result = this.slot;
         if (result instanceof CauseHolder || result == SUCCESS) {
             return null;
         }
