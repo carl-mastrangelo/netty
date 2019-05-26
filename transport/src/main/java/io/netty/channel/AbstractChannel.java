@@ -26,6 +26,7 @@ import io.netty.util.internal.UnstableApi;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
+import io.perfmark.PerfMark;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.InetSocketAddress;
@@ -935,6 +936,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 return;
             }
 
+            PerfMark.startTask("AbstractChannel.doWrite");
             try {
                 doWrite(outboundBuffer);
             } catch (Throwable t) {
@@ -959,6 +961,7 @@ public abstract class AbstractChannel extends DefaultAttributeMap implements Cha
                 }
             } finally {
                 inFlush0 = false;
+                PerfMark.stopTask("AbstractChannel.doWrite");
             }
         }
 

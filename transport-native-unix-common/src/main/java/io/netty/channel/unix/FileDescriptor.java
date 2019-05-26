@@ -17,6 +17,7 @@ package io.netty.channel.unix;
 
 import io.netty.util.internal.ThrowableUtil;
 
+import io.perfmark.PerfMark;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -122,7 +123,13 @@ public class FileDescriptor {
     }
 
     public final int write(ByteBuffer buf, int pos, int limit) throws IOException {
-        int res = write(fd, buf, pos, limit);
+        int res;
+        PerfMark.startTask("FileDescriptor.write");
+        try {
+            res = write(fd, buf, pos, limit);
+        } finally {
+            PerfMark.stopTask("FileDescriptor.write");
+        }
         if (res >= 0) {
             return res;
         }
@@ -130,7 +137,13 @@ public class FileDescriptor {
     }
 
     public final int writeAddress(long address, int pos, int limit) throws IOException {
-        int res = writeAddress(fd, address, pos, limit);
+        int res;
+        PerfMark.startTask("FileDescriptor.writeAddress");
+        try {
+            res = writeAddress(fd, address, pos, limit);
+        } finally {
+            PerfMark.stopTask("FileDescriptor.writeAddress");
+        }
         if (res >= 0) {
             return res;
         }
@@ -139,7 +152,13 @@ public class FileDescriptor {
     }
 
     public final long writev(ByteBuffer[] buffers, int offset, int length, long maxBytesToWrite) throws IOException {
-        long res = writev(fd, buffers, offset, min(IOV_MAX, length), maxBytesToWrite);
+        long res;
+        PerfMark.startTask("FileDescriptor.writev");
+        try {
+            res = writev(fd, buffers, offset, min(IOV_MAX, length), maxBytesToWrite);
+        } finally {
+            PerfMark.stopTask("FileDescriptor.writev");
+        }
         if (res >= 0) {
             return res;
         }
@@ -147,7 +166,13 @@ public class FileDescriptor {
     }
 
     public final long writevAddresses(long memoryAddress, int length) throws IOException {
-        long res = writevAddresses(fd, memoryAddress, length);
+        long res;
+        PerfMark.startTask("FileDescriptor.writevAddresses");
+        try {
+            res = writevAddresses(fd, memoryAddress, length);
+        } finally {
+            PerfMark.stopTask("FileDescriptor.writevAddresses");
+        }
         if (res >= 0) {
             return res;
         }
@@ -156,7 +181,13 @@ public class FileDescriptor {
     }
 
     public final int read(ByteBuffer buf, int pos, int limit) throws IOException {
-        int res = read(fd, buf, pos, limit);
+        int res;
+        PerfMark.startTask("FileDescriptor.read");
+        try {
+            res = read(fd, buf, pos, limit);
+        } finally {
+            PerfMark.stopTask("FileDescriptor.read");
+        }
         if (res > 0) {
             return res;
         }
@@ -167,7 +198,13 @@ public class FileDescriptor {
     }
 
     public final int readAddress(long address, int pos, int limit) throws IOException {
-        int res = readAddress(fd, address, pos, limit);
+        int res;
+        PerfMark.startTask("FileDescriptor.readAddress");
+        try {
+            res = readAddress(fd, address, pos, limit);
+        } finally {
+            PerfMark.stopTask("FileDescriptor.readAddress");
+        }
         if (res > 0) {
             return res;
         }

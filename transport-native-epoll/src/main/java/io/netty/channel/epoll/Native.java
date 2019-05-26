@@ -25,6 +25,7 @@ import io.netty.util.internal.ThrowableUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
+import io.perfmark.PerfMark;
 import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 import java.util.Locale;
@@ -111,8 +112,14 @@ public final class Native {
 
     public static int epollWait(FileDescriptor epollFd, EpollEventArray events, FileDescriptor timerFd,
                                 int timeoutSec, int timeoutNs) throws IOException {
-        int ready = epollWait0(epollFd.intValue(), events.memoryAddress(), events.length(), timerFd.intValue(),
-                               timeoutSec, timeoutNs);
+        int ready;
+        PerfMark.startTask("Native.epollWait0");
+        try {
+            ready = epollWait0(epollFd.intValue(), events.memoryAddress(), events.length(), timerFd.intValue(),
+                    timeoutSec, timeoutNs);
+        } finally {
+            PerfMark.stopTask("Native.epollWait0");
+        }
         if (ready < 0) {
             throw newIOException("epoll_wait", ready);
         }
