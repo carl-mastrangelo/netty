@@ -29,6 +29,7 @@ import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
+import io.perfmark.PerfMark;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
@@ -267,7 +268,12 @@ public final class ChannelOutboundBuffer {
         if (!e.cancelled) {
             // only release message, notify and decrement if it was not canceled before.
             ReferenceCountUtil.safeRelease(msg);
-            safeSuccess(promise);
+            PerfMark.startTask("ChannelOutboundBuffer.fulfillPromise");
+            try {
+                safeSuccess(promise);
+            } finally {
+                PerfMark.stopTask("ChannelOutboundBuffer.fulfillPromise");
+            }
             decrementPendingOutboundBytes(size, false, true);
         }
 

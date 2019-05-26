@@ -31,6 +31,9 @@ import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 
+import io.perfmark.PerfMark;
+import io.perfmark.Tag;
+
 import java.net.SocketAddress;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 
@@ -84,6 +87,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     private final String name;
     private final boolean ordered;
     private final int executionMask;
+    private final Tag tag;
 
     // Will be set to null if no child executor should be used, otherwise it will be set to the
     // child executor.
@@ -99,6 +103,7 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     AbstractChannelHandlerContext(DefaultChannelPipeline pipeline, EventExecutor executor,
                                   String name, Class<? extends ChannelHandler> handlerClass) {
         this.name = ObjectUtil.checkNotNull(name, "name");
+        this.tag = PerfMark.createTag(name);
         this.pipeline = pipeline;
         this.executor = executor;
         this.executionMask = mask(handlerClass);
@@ -370,10 +375,13 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
 
     private void invokeChannelRead(Object msg) {
         if (invokeHandler()) {
+            PerfMark.startTask("AbstractChannelHandlerContext.invokeChannelRead", tag);
             try {
                 ((ChannelInboundHandler) handler()).channelRead(this, msg);
             } catch (Throwable t) {
                 notifyHandlerException(t);
+            } finally {
+                PerfMark.stopTask("AbstractChannelHandlerContext.invokeChannelRead", tag);
             }
         } else {
             fireChannelRead(msg);
@@ -712,10 +720,13 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     private void invokeWrite0(Object msg, ChannelPromise promise) {
+        PerfMark.startTask("AbstractChannelHandlerContext.invokeWrite0", tag);
         try {
             ((ChannelOutboundHandler) handler()).write(this, msg, promise);
         } catch (Throwable t) {
             notifyOutboundHandlerException(t, promise);
+        } finally {
+            PerfMark.stopTask("AbstractChannelHandlerContext.invokeWrite0", tag);
         }
     }
 
@@ -745,10 +756,13 @@ abstract class AbstractChannelHandlerContext implements ChannelHandlerContext, R
     }
 
     private void invokeFlush0() {
+        PerfMark.startTask("AbstractChannelHandlerContext.invokeFlush0", tag);
         try {
             ((ChannelOutboundHandler) handler()).flush(this);
         } catch (Throwable t) {
             notifyHandlerException(t);
+        } finally {
+            PerfMark.stopTask("AbstractChannelHandlerContext.invokeFlush0", tag);
         }
     }
 

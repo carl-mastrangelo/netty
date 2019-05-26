@@ -29,6 +29,7 @@ import io.netty.util.internal.ReflectionUtil;
 import io.netty.util.internal.SystemPropertyUtil;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+import io.perfmark.PerfMark;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
@@ -482,7 +483,12 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                         // (OK - no wake-up required).
 
                         if (wakenUp.get()) {
-                            selector.wakeup();
+                            PerfMark.startTask("NioEventLoop.wakeup2");
+                            try {
+                                selector.wakeup();
+                            } finally {
+                                PerfMark.stopTask("NioEventLoop.wakeup2");
+                            }
                         }
                         // fall through
                     default:
@@ -545,10 +551,15 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     }
 
     private void processSelectedKeys() {
-        if (selectedKeys != null) {
-            processSelectedKeysOptimized();
-        } else {
-            processSelectedKeysPlain(selector.selectedKeys());
+        PerfMark.startTask("NioEventLoop.processSelectedKeys");
+        try {
+            if (selectedKeys != null) {
+                processSelectedKeysOptimized();
+            } else {
+                processSelectedKeysPlain(selector.selectedKeys());
+            }
+        } finally {
+            PerfMark.stopTask("NioEventLoop.processSelectedKeys");
         }
     }
 
@@ -688,13 +699,23 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             // Process OP_WRITE first as we may be able to write some queued buffers and so free memory.
             if ((readyOps & SelectionKey.OP_WRITE) != 0) {
                 // Call forceFlush which will also take care of clear the OP_WRITE once there is nothing left to write
-                ch.unsafe().forceFlush();
+                PerfMark.startTask("NioEventLoop.processSelectedKey(ChannelWrite)");
+                try {
+                    ch.unsafe().forceFlush();
+                } finally {
+                    PerfMark.stopTask("NioEventLoop.processSelectedKey(ChannelWrite)");
+                }
             }
 
             // Also check for readOps of 0 to workaround possible JDK bug which may otherwise lead
             // to a spin loop
             if ((readyOps & (SelectionKey.OP_READ | SelectionKey.OP_ACCEPT)) != 0 || readyOps == 0) {
-                unsafe.read();
+                PerfMark.startTask("NioEventLoop.processSelectedKey(ChannelRead)");
+                try {
+                    unsafe.read();
+                } finally {
+                    PerfMark.stopTask("NioEventLoop.processSelectedKey(ChannelRead)");
+                }
             }
         } catch (CancelledKeyException ignored) {
             unsafe.close(unsafe.voidPromise());
@@ -703,6 +724,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     private static void processSelectedKey(SelectionKey k, NioTask<SelectableChannel> task) {
         int state = 0;
+        PerfMark.startTask("NioEventLoop.processSelectedKey(Task)");
         try {
             task.channelReady(k.channel(), k);
             state = 1;
@@ -711,6 +733,7 @@ public final class NioEventLoop extends SingleThreadEventLoop {
             invokeChannelUnregistered(task, k, e);
             state = 2;
         } finally {
+            PerfMark.stopTask("NioEventLoop.processSelectedKey(Task)");
             switch (state) {
             case 0:
                 k.cancel();
@@ -757,7 +780,12 @@ public final class NioEventLoop extends SingleThreadEventLoop {
     @Override
     protected void wakeup(boolean inEventLoop) {
         if (!inEventLoop && wakenUp.compareAndSet(false, true)) {
-            selector.wakeup();
+            PerfMark.startTask("NioEventLoop.wakeup0");
+            try {
+                selector.wakeup();
+            } finally {
+                PerfMark.stopTask("NioEventLoop.wakeup0");
+            }
         }
     }
 
@@ -767,11 +795,18 @@ public final class NioEventLoop extends SingleThreadEventLoop {
 
     int selectNow() throws IOException {
         try {
+            PerfMark.startTask("NioEventLoop.selectNow");
             return selector.selectNow();
         } finally {
+            PerfMark.stopTask("NioEventLoop.selectNow");
             // restore wakeup state if needed
             if (wakenUp.get()) {
-                selector.wakeup();
+                PerfMark.startTask("NioEventLoop.wakeup1");
+                try {
+                    selector.wakeup();
+                } finally {
+                    PerfMark.stopTask("NioEventLoop.wakeup1");
+                }
             }
         }
     }
@@ -798,12 +833,22 @@ public final class NioEventLoop extends SingleThreadEventLoop {
                 // If we don't, the task might be pended until select operation was timed out.
                 // It might be pended until idle timeout if IdleStateHandler existed in pipeline.
                 if (hasTasks() && wakenUp.compareAndSet(false, true)) {
-                    selector.selectNow();
+                    PerfMark.startTask("NioEventLoop.selectNow1");
+                    try {
+                        selector.selectNow();
+                    } finally {
+                        PerfMark.stopTask("NioEventLoop.selectNow1");
+                    }
                     selectCnt = 1;
                     break;
                 }
-
-                int selectedKeys = selector.select(timeoutMillis);
+                int selectedKeys;
+                PerfMark.startTask("NioEventLoop.select");
+                try {
+                    selectedKeys = selector.select(timeoutMillis);
+                } finally {
+                    PerfMark.stopTask("NioEventLoop.select");
+                }
                 selectCnt ++;
 
                 if (selectedKeys != 0 || oldWakenUp || wakenUp.get() || hasTasks() || hasScheduledTasks()) {

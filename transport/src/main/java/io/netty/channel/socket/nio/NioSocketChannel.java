@@ -36,6 +36,8 @@ import io.netty.util.internal.SocketUtils;
 import io.netty.util.internal.UnstableApi;
 import io.netty.util.internal.logging.InternalLogger;
 import io.netty.util.internal.logging.InternalLoggerFactory;
+import io.perfmark.PerfMark;
+import io.perfmark.Tag;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -342,15 +344,25 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
 
     @Override
     protected int doReadBytes(ByteBuf byteBuf) throws Exception {
-        final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
-        allocHandle.attemptedBytesRead(byteBuf.writableBytes());
-        return byteBuf.writeBytes(javaChannel(), allocHandle.attemptedBytesRead());
+        PerfMark.startTask("NioSocketChannel.doReadBytes");
+        try {
+            final RecvByteBufAllocator.Handle allocHandle = unsafe().recvBufAllocHandle();
+            allocHandle.attemptedBytesRead(byteBuf.writableBytes());
+            return byteBuf.writeBytes(javaChannel(), allocHandle.attemptedBytesRead());
+        } finally {
+            PerfMark.stopTask("NioSocketChannel.doReadBytes");
+        }
     }
 
     @Override
     protected int doWriteBytes(ByteBuf buf) throws Exception {
-        final int expectedWrittenBytes = buf.readableBytes();
-        return buf.readBytes(javaChannel(), expectedWrittenBytes);
+        PerfMark.startTask("NioSocketChannel.doWriteBytes");
+        try {
+            final int expectedWrittenBytes = buf.readableBytes();
+            return buf.readBytes(javaChannel(), expectedWrittenBytes);
+        } finally {
+            PerfMark.stopTask("NioSocketChannel.doWriteBytes");
+        }
     }
 
     @Override
@@ -388,6 +400,7 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
             int maxBytesPerGatheringWrite = ((NioSocketChannelConfig) config).getMaxBytesPerGatheringWrite();
             ByteBuffer[] nioBuffers = in.nioBuffers(1024, maxBytesPerGatheringWrite);
             int nioBufferCnt = in.nioBufferCount();
+            Tag tag = PerfMark.createTag(nioBufferCnt);
 
             // Always us nioBuffers() to workaround data-corruption.
             // See https://github.com/netty/netty/issues/2761
@@ -402,7 +415,13 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
                     // to check if the total size of all the buffers is non-zero.
                     ByteBuffer buffer = nioBuffers[0];
                     int attemptedBytes = buffer.remaining();
-                    final int localWrittenBytes = ch.write(buffer);
+                    final int localWrittenBytes;
+                    PerfMark.startTask("NioSocketChannel.doWrite", tag);
+                    try {
+                        localWrittenBytes = ch.write(buffer);
+                    } finally {
+                        PerfMark.stopTask("NioSocketChannel.doWrite", tag);
+                    }
                     if (localWrittenBytes <= 0) {
                         incompleteWrite(true);
                         return;
@@ -417,7 +436,13 @@ public class NioSocketChannel extends AbstractNioByteChannel implements io.netty
                     // to check if the total size of all the buffers is non-zero.
                     // We limit the max amount to int above so cast is safe
                     long attemptedBytes = in.nioBufferSize();
-                    final long localWrittenBytes = ch.write(nioBuffers, 0, nioBufferCnt);
+                    final long localWrittenBytes;
+                    PerfMark.startTask("NioSocketChannel.doWrite", tag);
+                    try {
+                        localWrittenBytes = ch.write(nioBuffers, 0, nioBufferCnt);
+                    } finally {
+                        PerfMark.stopTask("NioSocketChannel.doWrite", tag);
+                    }
                     if (localWrittenBytes <= 0) {
                         incompleteWrite(true);
                         return;

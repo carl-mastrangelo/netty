@@ -18,6 +18,8 @@ package io.netty.handler.codec.http2;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.internal.ObjectUtil;
 import io.netty.util.internal.UnstableApi;
+import io.perfmark.PerfMark;
+import io.perfmark.Tag;
 
 import static io.netty.handler.codec.http2.Http2CodecUtil.DEFAULT_HEADER_LIST_SIZE;
 import static io.netty.handler.codec.http2.Http2Error.COMPRESSION_ERROR;
@@ -121,6 +123,8 @@ public class DefaultHttp2HeadersDecoder implements Http2HeadersDecoder, Http2Hea
 
     @Override
     public Http2Headers decodeHeaders(int streamId, ByteBuf headerBlock) throws Http2Exception {
+        Tag tag = PerfMark.createTag(headerBlock.readableBytes());
+        PerfMark.startTask("DefaultHttp2HeadersDecoder.decodeHeaders", tag);
         try {
             final Http2Headers headers = newHeaders();
             hpackDecoder.decode(streamId, headerBlock, headers, validateHeaders);
@@ -134,6 +138,8 @@ public class DefaultHttp2HeadersDecoder implements Http2HeadersDecoder, Http2Hea
             // the Header builder throws IllegalArgumentException if the key or value was invalid
             // for any reason (e.g. the key was an invalid pseudo-header).
             throw connectionError(COMPRESSION_ERROR, e, e.getMessage());
+        } finally {
+            PerfMark.stopTask("DefaultHttp2HeadersDecoder.decodeHeaders", tag);
         }
     }
 

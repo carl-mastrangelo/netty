@@ -18,6 +18,8 @@ package io.netty.handler.codec.http2;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.util.internal.UnstableApi;
+import io.perfmark.PerfMark;
+import io.perfmark.Tag;
 
 import static io.netty.handler.codec.http2.Http2Error.COMPRESSION_ERROR;
 import static io.netty.handler.codec.http2.Http2Exception.connectionError;
@@ -63,6 +65,8 @@ public class DefaultHttp2HeadersEncoder implements Http2HeadersEncoder, Http2Hea
 
     @Override
     public void encodeHeaders(int streamId, Http2Headers headers, ByteBuf buffer) throws Http2Exception {
+        Tag tag = PerfMark.createTag(headers.size());
+        PerfMark.startTask("DefaultHttp2HeadersEncoder", tag);
         try {
             // If there was a change in the table size, serialize the output from the hpackEncoder
             // resulting from that change.
@@ -76,6 +80,8 @@ public class DefaultHttp2HeadersEncoder implements Http2HeadersEncoder, Http2Hea
             throw e;
         } catch (Throwable t) {
             throw connectionError(COMPRESSION_ERROR, t, "Failed encoding headers block: %s", t.getMessage());
+        } finally {
+            PerfMark.stopTask("DefaultHttp2HeadersEncoder", tag);
         }
     }
 
