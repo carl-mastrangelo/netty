@@ -276,6 +276,7 @@ public class Http2MultiplexCodec extends Http2FrameCodec {
         }
 
         super.channelWritabilityChanged(ctx);
+        ctx.fireChannelWritabilityChanged();
     }
 
     final void flush0(ChannelHandlerContext ctx) {
