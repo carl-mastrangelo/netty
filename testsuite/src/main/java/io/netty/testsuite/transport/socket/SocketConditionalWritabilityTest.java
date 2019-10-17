@@ -31,7 +31,7 @@ import org.junit.Test;
 import java.util.concurrent.CountDownLatch;
 
 public class SocketConditionalWritabilityTest extends AbstractSocketTest {
-    @Test(timeout = 30000)
+    @Test(timeout = 3000000)
     public void testConditionalWritability() throws Throwable {
         run();
     }

@@ -713,6 +713,8 @@ public abstract class AbstractEpollStreamChannel extends AbstractEpollChannel im
             return super.prepareToClose();
         }
 
+        ScatteredByteBuf sbb = new ScatteredByteBuf();
+
         private void handleReadException(ChannelPipeline pipeline, ByteBuf byteBuf, Throwable cause, boolean close,
                 EpollRecvByteAllocatorHandle allocHandle) {
             if (byteBuf != null) {
@@ -751,7 +753,7 @@ public abstract class AbstractEpollStreamChannel extends AbstractEpollChannel im
             allocHandle.reset(config);
             epollInBefore();
 
-            ByteBuf byteBuf = null;
+            //ByteBuf byteBuf = null;
             boolean close = false;
             try {
                 Queue<SpliceInTask> sQueue = null;
@@ -774,12 +776,16 @@ public abstract class AbstractEpollStreamChannel extends AbstractEpollChannel im
 
                     // we use a direct buffer here as the native implementations only be able
                     // to handle direct buffers.
-                    byteBuf = allocHandle.allocate(allocator);
-                    allocHandle.lastBytesRead(doReadBytes(byteBuf));
+                    // byteBuf = allocHandle.allocate(allocator);
+                    // allocHandle.lastBytesRead(doReadBytes(byteBuf));
+                    IovArray array = ((EpollEventLoop) eventLoop()).cleanIovArray();
+                    sbb.prepare(allocator, array, allocHandle.guess());
+                    allocHandle.attemptedBytesRead(65536 - 64);
+                    allocHandle.lastBytesRead(doReadAddresses(array));
                     if (allocHandle.lastBytesRead() <= 0) {
                         // nothing was read, release the buffer.
-                        byteBuf.release();
-                        byteBuf = null;
+                        //byteBuf.release();
+                        //byteBuf = null;
                         close = allocHandle.lastBytesRead() < 0;
                         if (close) {
                             // There is nothing left to read as we received an EOF.
@@ -789,8 +795,8 @@ public abstract class AbstractEpollStreamChannel extends AbstractEpollChannel im
                     }
                     allocHandle.incMessagesRead(1);
                     readPending = false;
-                    pipeline.fireChannelRead(byteBuf);
-                    byteBuf = null;
+                    pipeline.fireChannelRead(sbb.read(allocHandle.lastBytesRead()));
+                    //byteBuf = null;
 
                     if (shouldBreakEpollInReady(config)) {
                         // We need to do this for two reasons:
@@ -815,11 +821,18 @@ public abstract class AbstractEpollStreamChannel extends AbstractEpollChannel im
                     shutdownInput(false);
                 }
             } catch (Throwable t) {
-                handleReadException(pipeline, byteBuf, t, close, allocHandle);
+                handleReadException(pipeline, null, t, close, allocHandle);
             } finally {
                 epollInFinally(config);
             }
         }
+    }
+
+    private int doReadAddresses(IovArray array) throws IOException {
+        final int cnt = array.count();
+        assert cnt != 0;
+
+        return socket.readvAddresses(array.memoryAddress(0), cnt);
     }
 
     private void addToSpliceQueue(final SpliceInTask task) {

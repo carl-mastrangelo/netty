@@ -143,6 +143,17 @@ public class FileDescriptor {
         return ioResult("readAddress", res);
     }
 
+    public final int readvAddresses(long memoryAddress, int length) throws IOException {
+        int res = readvAddresses(fd, memoryAddress, length);
+        if (res > 0) {
+            return res;
+        }
+        if (res == 0) {
+            return -1;
+        }
+        return ioResult("readvAddresses", (int) res);
+    }
+
     @Override
     public String toString() {
         return "FileDescriptor{" +
@@ -231,6 +242,7 @@ public class FileDescriptor {
 
     private static native int read(int fd, ByteBuffer buf, int pos, int limit);
     private static native int readAddress(int fd, long address, int pos, int limit);
+    private static native int readvAddresses(int fd, long memoryAddress, int limit);
 
     private static native long newPipe();
 }

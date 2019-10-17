@@ -62,6 +62,7 @@ static jlong _writev(JNIEnv* env, jclass clazz, jint fd, struct iovec* iov, jint
     return (jlong) res;
 }
 
+
 static jint _read(JNIEnv* env, jclass clazz, jint fd, void* buffer, jint pos, jint limit) {
     ssize_t res;
     int err;
@@ -74,6 +75,20 @@ static jint _read(JNIEnv* env, jclass clazz, jint fd, void* buffer, jint pos, ji
         return -err;
     }
     return (jint) res;
+}
+
+static jlong _readvAddresses(JNIEnv* env, jclass clazz, jint fd, struct iovec* iov, jint length) {
+    ssize_t res;
+    int err;
+    do {
+        res = readv(fd, iov, length);
+        // keep on reading if it was interrupted
+    } while (res == -1 && ((err = errno) == EINTR));
+
+    if (res < 0) {
+        return -err;
+    }
+    return (jlong) res;
 }
 
 // JNI Registered Methods Begin
@@ -229,6 +244,12 @@ static jint netty_unix_filedescriptor_readAddress(JNIEnv* env, jclass clazz, jin
     return _read(env, clazz, fd, (void*) (intptr_t) address, pos, limit);
 }
 
+static jlong netty_unix_filedescriptor_readvAddresses(JNIEnv* env, jclass clazz, jint fd, jlong memoryAddress, jint length) {
+    struct iovec* iov = (struct iovec*) (intptr_t) memoryAddress;
+    return _readvAddresses(env, clazz, fd, iov, length);
+}
+
+
 static jlong netty_unix_filedescriptor_newPipe(JNIEnv* env, jclass clazz) {
     int fd[2];
     if (pipe2) {
@@ -270,6 +291,7 @@ static const JNINativeMethod method_table[] = {
   { "writev", "(I[Ljava/nio/ByteBuffer;IIJ)J", (void *) netty_unix_filedescriptor_writev },
   { "read", "(ILjava/nio/ByteBuffer;II)I", (void *) netty_unix_filedescriptor_read },
   { "readAddress", "(IJII)I", (void *) netty_unix_filedescriptor_readAddress },
+  { "readvAddresses", "(IJI)I", (void *) netty_unix_filedescriptor_readvAddresses },
   { "newPipe", "()J", (void *) netty_unix_filedescriptor_newPipe }
 };
 static const jint method_table_size = sizeof(method_table) / sizeof(method_table[0]);
